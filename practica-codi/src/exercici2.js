@@ -93,27 +93,48 @@ async function main() {
         // Llegim els CSVs
         const games = await readCSV(gamesFilePath);
         const reviews = await readCSV(reviewsFilePath);
+        const output = {
+            timestamp: new Date().toISOString(),
+            games: []
+        };
+        // Iteramos por los 2 primeros juegos
+        const firstTwoGames = games.slice(0, 2);
 
-        // Iterem pels jocs
-        console.log('\n=== Llista de Jocs ===');
-        for (const game of games) {
-            console.log(`Codi: ${game.appid}, Nom: ${game.name}`);
+        for (const game of firstTwoGames) {
+            // Buscamos las reviews cuyo app_id coincida con el juego iterado
+            // y seleccionamos las 2 primeras
+            const firstTwoGameReviews = reviews
+                .filter(review => review.app_id === game.appid)
+                .slice(0, 2);
+
+            // Definimos los stats de las reviews
+            const stats = {
+                positive: 0,
+                negative: 0,
+                neutral: 0,
+                error: 0
+            };
+
+            // Iteramos por las reviews para obtener el sentimiento y añadirlo a stats
+            for (const review of firstTwoGameReviews) {
+                console.log(`Analizando review ${review.id} del juego ${game.name}`);
+                const sentiment = await analyzeSentiment(review.content);
+                stats[sentiment] += 1;
+            }
+
+            // Registramos el resultado del juego en la variable output
+            output.games.push({
+                appid: game.app_id,
+                name: game.name,
+                statistics: stats
+            });
         }
 
-        // Iterem per les primeres 10 reviews i analitzem el sentiment
-        console.log('\n=== Anàlisi de Sentiment de Reviews ===');
-        const reviewsToAnalyze = reviews.slice(0, 2);
-        
-        for (const review of reviewsToAnalyze) {
-            console.log(`\nProcessant review: ${review.id}`);
-            const sentiment = await analyzeSentiment(review.content);
-            console.log(`Review ID: ${review.id}`);
-            console.log(`Joc ID: ${review.app_id}`);
-            console.log(`Contingut: ${review.content.substring(0, 100)}...`);
-            console.log(`Sentiment (Ollama): ${sentiment}`);
-            console.log('------------------------');
-        }
-        console.log(`\nNOMÉS AVALUEM LES DUES PRIMERES REVIEWS`);
+        // Persistimos en un fichero el resultado
+        const outputPath = path.join(__dirname, dataPath, 'exercici2_resposta.json');
+        fs.writeFileSync(outputPath, JSON.stringify(output, null, 2));
+        console.log('\nArchivo generado en:', outputPath);
+
      } catch (error) {
         console.error('Error durant l\'execució:', error.message);
     }
