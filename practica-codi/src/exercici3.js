@@ -91,6 +91,7 @@ async function main() {
         }
 
         const animalDirectories = await fs.readdir(imagesFolderPath);
+        const output = { analisis: [] }; // Donde guardaremos el output
 
         // Iterem per cada element dins del directori d'animals
         for (const animalDir of animalDirectories) {
@@ -137,8 +138,39 @@ async function main() {
                     console.log(`\nProcessant imatge: ${imagePath}`);
                     console.log(`Mida de la imatge en Base64: ${base64String.length} caràcters`);
                     
-                    // Definim el prompt per a Ollama
-                    const prompt = "Identifica quin tipus d'animal apareix a la imatge";
+                    // Definimos el nuevo prompt para Ollama
+                    const prompt = `Identificar l'animal a la imatge i retornar NOMÉS un objecte JSON vàlid amb aquesta estructura:
+                    {
+                        "nom_comu": "",
+                        "nom_cientific": "",
+                        "taxonomia": {
+                            "classe": "",
+                            "ordre": "",
+                            "familia": ""
+                        },
+                        "habitat": {
+                            "tipus": [],
+                            "regioGeografica": [],
+                            "clima": []
+                        },
+                        "dieta": {
+                            "tipus": "",
+                            "aliments_principals": []
+                        },
+                        "caracteristiques_fisiques": {
+                            "mida": {
+                            "altura_mitjana_cm": "",
+                            "pes_mitja_kg": ""
+                            },
+                            "colors_predominants": [],
+                            "trets_distintius": []
+                        },
+                        "estat_conservacio": {
+                            "classificacio_IUCN": "",
+                            "amenaces_principals": []
+                        }
+                    }
+                    `;
                     console.log('Prompt:', prompt);
                     
                     // Fem la petició a Ollama amb la imatge i el prompt
@@ -149,6 +181,13 @@ async function main() {
                         // Si hem rebut resposta, la mostrem
                         console.log(`\nResposta d'Ollama per ${imageFile}:`);
                         console.log(response);
+
+                        // Añadir respuesta a variable output
+                        const parsed = JSON.parse(response);
+                        output.analisis.push({
+                            imatge: {nom_fitxer: imageFile },
+                            analisi: parsed
+                        });
                     } else {
                         // Si no hem rebut resposta vàlida, loguegem l'error
                         console.error(`\nNo s'ha rebut resposta vàlida per ${imageFile}`);
@@ -160,6 +199,11 @@ async function main() {
             console.log(`\nATUREM L'EXECUCIÓ DESPRÉS D'ITERAR EL CONTINGUT DEL PRIMER DIRECTORI`);
             break; // ATUREM L'EXECUCIÓ DESPRÉS D'ITERAR EL CONTINGUT DEL PRIMER DIRECTORI
         }
+
+        // Persistimos en un fichero el resultado
+        const outputPath = path.join(__dirname, process.env.DATA_PATH, 'exercici3_resposta.json');
+        await fs.writeFile(outputPath, JSON.stringify(output, null, 2));
+         console.log('\nArchivo generado en:', outputPath);
 
     } catch (error) {
         console.error('Error durant l\'execució:', error.message);
